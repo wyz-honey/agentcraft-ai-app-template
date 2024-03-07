@@ -1,175 +1,69 @@
-import React, { useMemo } from "react";
-import { Table, Button } from '@mantine/core';
-import { useState, useRef, useEffect } from 'react';
-import MDXContainer from 'components/MDXContainer';
+import React from "react";
+import { Button, Textarea, Center, Badge } from '@mantine/core';
+import { useState, useEffect } from 'react';
+
 import { chatStream } from 'store/chat';
-import { MessageType, ChatMessage } from 'types/chat';
-import styles from 'styles/chat.module.scss';
 
-
-const Generate = React.memo(
-    function ChatA({ prompt }: any) {
-        let token = '';
-        const [userInput, setUserInput] = useState(prompt);
-        const [loading, setLoading] = useState(false);
-        const [messages, setMessages] = useState<ChatMessage[]>([
-        ]);
-
-        const messageListRef = useRef(null);
-        useEffect(() => {
-            const messageList: any = messageListRef.current;
-            messageList.scrollTop = messageList.scrollHeight;
-        }, [messages]);
-
-        const getStory = () => {
-            const currentMessage: ChatMessage[] = [
-                ...messages,
-                {
-                    message: userInput,
-                    type: MessageType.USER,
-                    sourceIdx: -1,
-                    showFeedback: false,
-                    liked: false,
-                    disLiked: false,
-                },
-            ];
-            setLoading(true);
-            setMessages(currentMessage);
-            try {
-                const _preMessages = JSON.parse(JSON.stringify(currentMessage));
-                const newMessage = {
-                    message: "",
-                    type: "assistant",
-                    sourceIdx: -1,
-                    showFeedback: false,
-                    liked: false,
-                    disLiked: false,
-                };
-                setUserInput("");
-                const requestMessage = currentMessage.map((item) => {
-                    return {
-                        role: item.type,
-                        content: item.message
-                    }
-                })
-                chatStream({
-                    version: 'v1',
-                    messages: requestMessage,
-                    config: {
-                        stream: true,
-                        max_tokens: 1024
-                    },
-                    onFinish: (msg) => {
-                        setLoading(false);
-                    },
-                    onUpdate: (responseText: string, delta: string) => {
-                        newMessage.message += delta;
-                        setMessages([..._preMessages, newMessage]);
-                    }
-                }, token);
-
-            } catch (e) {
-
-            }
-        };
-        const userResponseWithUI = (assistant: string) => {
-            const currentMessage: ChatMessage[] = [
-                ...messages,
-                {
-                    message: assistant,
-                    type: MessageType.USER,
-                    sourceIdx: -1,
-                    showFeedback: false,
-                    liked: false,
-                    disLiked: false,
-                },
-            ];
-            setLoading(true);
-            setMessages(currentMessage);
-            try {
-                const _preMessages = JSON.parse(JSON.stringify(currentMessage));
-                const newMessage = {
-                    message: "",
-                    type: "assistant",
-                    sourceIdx: -1,
-                    showFeedback: false,
-                    liked: false,
-                    disLiked: false,
-                };
-                setUserInput("");
-                chatStream({
-                    version: 'v1',
-                    messages: [{
-                        role: 'user',
-                        content: assistant
-                    }],
-                    config: {
-                        stream: true,
-                        max_tokens: 1024
-                    },
-                    onFinish: (msg) => {
-                        setLoading(false);
-                    },
-                    onUpdate: (responseText: string, delta: string) => {
-                        newMessage.message += delta;
-                        setMessages([..._preMessages, newMessage]);
-                    }
-                }, token);
-
-            } catch (e) {
-
-            }
-        }
-
-        useEffect(() => {
-            getStory();
-        }, []);
-
-        return (
-            <>
-                <div className={styles.main}>
-                    <div className={styles.cloud}>
-                        <div ref={messageListRef} className={styles.messagelist}>
-                            {messages.map((message: ChatMessage, index: number) => {
-                                if (message.type === MessageType.USER) {
-                                    return null
-                                }
-                                return (
-                                    <div
-                                        key={index}
-                                        className={
-
-                                            loading
-                                                ? styles.usermessagewaiting
-                                                : styles.apimessage
-                                        }
-                                    >
-
-                                        <div className={styles.markdownanswer}>
-                                            <MDXContainer content={message.message} scope={{ userResponseWithUI }} />
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
-            </>
-        );
-    });
-
-
+let global_timmer = 1;
 export default function Baby2({ prompt, image }: any) {
+    let token = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjI3LCJleHAiOjE3NDEzNjI5OTl9.WbmI1f7d2m_Qkqx6vq5tDWQCvPjRXEDmAnU7blpkTfY';
+    const [content, setContent] = useState('');
+    const getStory = (userInput: string) => {
+        try {
+           
+            let _content = '';
+            chatStream({
+                version: 'v1',
+                messages: [{
+                    role: 'user',
+                    content: userInput
+                }],
+                config: {
+                    stream: true,
+                    max_tokens: 1024
+                },
+                onFinish: (msg) => {
 
-    const generate = useMemo(() => <Generate prompt={prompt} />, [prompt]);
+                },
+                onUpdate: (responseText: string, delta: string) => {
+                    _content += delta;
+                    setContent(_content);
+                }
+            }, token);
+
+        } catch (e) {
+
+        }
+    };
+
+
+    useEffect(() => {
+        if(global_timmer === 1) {
+            global_timmer++;
+            getStory(prompt);   
+        }
+    }, []);
+
     return (
         <div>
-            <div>您绘制的主题: {prompt}</div>
-
-            <div>
-                {generate}
+            <Center mb={12}> 
+                <Badge variant="gradient" gradient={{ from: 'indigo', to: 'cyan' }}>{prompt}</Badge>
+            </Center>
+            <div >
+                <Textarea
+                    minRows={18}
+                    maxRows={20}
+                    value={content}
+                    onChange={(event) => setContent(event.currentTarget.value)} />
             </div>
-            <Button>进入绘图制作</Button>
+            <Center mt={12}>
+                <Button mr={16}>进入绘图制作</Button>
+                <Button
+                    onClick={() => { 
+                        setContent('');
+                        getStory(prompt); 
+                     }}>重新制作</Button>
+            </Center>
         </div>
     );
 }
